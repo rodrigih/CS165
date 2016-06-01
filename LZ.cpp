@@ -6,6 +6,8 @@
 #include "ParamChecker.h"
 
 void encode(int, int, int, const std::string);
+int search(std::string, std::map<std::string, int>);
+
 int main(int argc, char* argv[])
 {
     int N = 11; //number of bits to encode window offset (9, 14, 11)
@@ -30,40 +32,56 @@ int main(int argc, char* argv[])
 void encode(int N, int L, int S, std::string content){
 	int W = pow(2, N);
 	int F = pow(2, L) - 1;
+	int S2 = pow(2, S) - 1;
 
+	//initialize dictionary
+	std::map<std::string, int> dict;
+	for(int i = 0; i < W-F; i++)
+		dict[""] = 0;
 
-	std::map<std::string, std::string> dict; //index, value
-	std::map<std::string, std::string>::iterator it;
-	std::string output;
-
-	std::string w = content.substr(0, 1);
-	int i = 1;
+	std::string result = "";
+	std::string prefix = "";
+	int i = 0;
 	while(i < content.length()){
-		int length = w.length(), offset = 0;
-		bool found = false;
 
-		std::string c = content.substr(i, 1);
-		std::string wc = w + c;
+		std::string b = content.substr(i, 1); //next byte of input
+		std::string prefixb = prefix + b;
+//std::cout << prefix << "-" << prefixb << std::endl;
+		int offset = search(prefixb, dict);
+		//std::cout << offset << std::endl;
 
-		for(it = dict.begin(); it != dict.end(); it++){
-			if(it->first == wc){
-				w = wc;
-				found = true;
-				output += std::to_string(length);
-				output += std::to_string(offset);
-			}
-			offset++;
+		if(offset != -1){ //if found
+			prefix = prefixb;
+			result += "(" + std::to_string(prefix.length()) + ", " + std::to_string(offset) + ")";//result += prefix;
 		}
-		if(!found){
-			output += std::to_string(length);
-			output += std::to_string(offset);
-			output += w;
-			dict[wc] = std::to_string(length);
-			dict[wc] += std::to_string(offset);
-			w = c;
+		else{
+			dict[prefix] = prefix.length();
+			result += "(0, " + std::to_string(prefix.length()) + ", " + prefix + ")";
+			prefix = b;
+		}
+		//check prefix length, write if above max
+		if(prefix.length() >= S){
+			result += "(0, " + std::to_string(prefix.length()) + ", " + prefix + ")";
+			prefix = b;
 		}
 		i++;
 	}
-	std::cout << content << std::endl;
-	std::cout << output;
+	std::cout << result;
+}
+
+int search(const std::string s, const std::map<std::string, int> map){
+	int len = 0;
+	std::map<std::string, int> m = map;
+	std::string str = s;
+
+	for(std::map<std::string, int>::iterator it = m.begin(); it != m.end(); it++){
+		std::cout << it->first << std::endl;
+		if(str.compare(it->first) == 0){
+			std::cout << "true";
+			return len; //if found, grab current length (offset) and continue to see if match found later
+		}
+		len += it->second;
+	}
+
+	return -1;
 }
