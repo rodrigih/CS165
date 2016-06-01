@@ -46,16 +46,15 @@ void encode(int N, int L, int S, std::string content){
 
 		std::string b = content.substr(i, 1); //next byte of input
 		std::string prefixb = prefix + b;
-//std::cout << prefix << "-" << prefixb << std::endl;
+
 		int offset = search(prefixb, dict);
-		//std::cout << offset << std::endl;
 
 		if(offset != -1){ //if found
 			prefix = prefixb;
 			result += "(" + std::to_string(prefix.length()) + ", " + std::to_string(offset) + ")";//result += prefix;
 		}
 		else{
-			dict[prefix] = prefix.length();
+			dict[prefixb] = prefixb.length();
 			result += "(0, " + std::to_string(prefix.length()) + ", " + prefix + ")";
 			prefix = b;
 		}
@@ -72,12 +71,11 @@ void encode(int N, int L, int S, std::string content){
 int search(const std::string s, const std::map<std::string, int> map){
 	int len = 0;
 	std::map<std::string, int> m = map;
+	std::map<std::string, int>::iterator it;
 	std::string str = s;
 
-	for(std::map<std::string, int>::iterator it = m.begin(); it != m.end(); it++){
-		std::cout << it->first << std::endl;
+	for(it = m.begin(); it != m.end(); it++){
 		if(str.compare(it->first) == 0){
-			std::cout << "true";
 			return len; //if found, grab current length (offset) and continue to see if match found later
 		}
 		len += it->second;
