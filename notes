@@ -1,0 +1,96 @@
+N = bits to encode window offset
+L = bits to encode match length
+S = bits to encode length of literal string
+
+W = window size (2^N)
+F = lookahead buffer size (2^L - 1)
+
+So the approach would be like this:
+    - You have a window of size W, which contains the characters you've already looked at and processed.
+
+    - You have a lookahead buffer of size F, which contains the characters that you are looking at
+      and are going to be processed
+
+    - You will then find the longest matching string that matches the characters in the buffer with the
+      characters in the window.
+
+    - If the longest matched string is of length one, then you output the string instead of a 
+      <length,offset> pair. We do this with a token triple, where we have <0,len,string>
+
+    - Otherwise, you  get the length of the matched string and the offest, and output it as a token 
+      double of <length,offset>
+
+So let's look at the example slide as an example:
+
+    - Initially we have a window of empty characters and a full lookahead buffer. If the left of "|" 
+      is the window and the right of "|" is the lookahead buffer, then we have:
+                    | abbaabbbabab
+
+    - Now we look at 'a'. there is no match because the window is empty, so we output a token triple. However, 
+      there may be more character we need to print directly, so let's save it for now.
+
+        - Since the parameter S limits the number of bits to encode the length of a literal string, we can 
+          only save a string of up to size 2^S-1. Assuming S is the default value (3), we can only store a 
+          string of size 7. 
+
+    - We then end up with:
+            a | bbaabbbabab
+
+    - Next we look at the next character, 'b'. Again, we have no match, since the window only has 'a'. We save
+      'b'. Our string literal is now "ab". It is still less than 7, so we can still keep adding to it before
+      outputting the token triple. We end up with 
+            ab | baabbbabab
+
+    - Next we look at the next character, 'b'. There is a match, which is 'b'. Since this match is only of 
+      length one, we output the character instead. We save 'b'. Our string literal is now "abb". Again, it is
+      less than 7, so we keep going. We end up with 
+            abb | aabbbabab
+
+    - Next we look at 'a'. Again there is a match, which is 'a'. Again it is a match of length 1, so we save it,
+      making our string literal, "abba", which is still less than 7. We end up with :
+            abba | abbbabab
+
+    - Next we look at 'a'. There is a match, which is 'a', but if we keep going we see that the next 3 chars
+      in the lookahead buffer, which is "abb", matches the first 3 chars in the window. Since this match is 
+      longer than 1, we output it as a token double.
+
+        - First we need to output our token triple though, since we've been saving it. We output <0,4,"abba">
+          The 0 tells the decoder it is recieving a string literal, the 4 specifies the length, and the 3rd
+          parameter is the actual string
+        
+        - Now we output the token double. Since the match is "abb", it is of length 3. Remember, L specifies
+          the bits we can use to encode a match length, so the length can be no more than 2^L-1. If L is the 
+          default value (4), we can only have a length of 15 for a matched string, even if there is a longer
+          match. Similarly, N specifies the limit of the offset. Since the window is of length 2^N, we don't
+          actually have to check for this, since we only check for matches inside the window
+
+        - The token double we output is <3,4>. This is because the match is of length 3 ("abb") and starting
+          from the end of the window, it happens 4 spaces from the end of the window (this is the offset)
+    
+    - We then slide the window forward  3 times, since the length of the match was 3. We end up with:
+            abbaabb | babab
+
+    - Next we look at the next character, 'b'. We see that the longest match is of length 2 ("ba").
+
+        - We output the token double <2,5>, because the match is of length 2 and the match begins 5
+          spaces starting from the end of the window.
+
+    - We slide the window forward 2 times, since the length of the match was 2. We end up with:
+            abbaabbba | bab
+
+    - Next we look at the next buffer. We see that "bab" is the longest match. This is the longest match
+      because a match can start in the window, but can overlap into the buffer. 
+
+        - The token double would be <3,2>, since the match is of length 3 and happens 2 spaces from the end of
+          the window ( "ba" is in the window, the last "b" is in the buffer.)
+
+    - We slide the window forward 3 times and end up with:
+            abbaabbbabab | 
+
+    - Since our buffer is empty and we reached the end of the file, we are done. We output a special
+      token double, <0,0>, to signify this.
+
+So the straight forward approach would use an array or string as the window, and when we are looking for the
+longest match, we go character by character. If we use a string, we can use the method find. It may make things
+easier. If you have any other ideas, work on them. But if you can't get any working, just shoot for the
+straight forward approach 
