@@ -85,6 +85,12 @@ int checkArgs(int* N, int* L, int* S, std::string* fileName,int argc, char* argv
         }
     }
 
+    if(*(fileName) == "") // No file specified
+    {
+        std::cerr << "No file specified" << std::endl;
+        errFlag = 1;
+    }
+
     return errFlag;
 }
 
